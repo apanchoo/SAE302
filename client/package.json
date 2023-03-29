@@ -1,0 +1,11 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "Client de la SAE302",
+  "main": "index.js",
+  "scripts": {
+    "test": "start"
+  },
+  "author": "Ashvin",
+  "license": "ISC"
+}
