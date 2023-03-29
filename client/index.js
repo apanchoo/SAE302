@@ -1,56 +1,123 @@
+// Client CLI avec Node.js et Socket.IO
 const readline = require('readline');
-const WebSocket = require('ws');
+const io = require('socket.io-client');
+const hideCursor = '\x1B[?25l';
+const showCursor = '\x1B[?25h';
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-// Fonction pour se connecter au serveur Websocket
-function connectToWebSocketServer(serverAddress, identifiant, motDePasse) {
-  const ws = new WebSocket(serverAddress);
+let serverAddress, username, password;
+let socket;
 
-  ws.on('open', function open() {
-    // Envoyer les identifiants au serveur
-    ws.send(JSON.stringify({ identifiant: identifiant, motDePasse: motDePasse }));
-  });
-
-  ws.on('message', function incoming(data) {
-    
-
-    const message = JSON.parse(data);
-    if (message.authentification === 'réussie') {
-      console.log(`Liste des salons disponibles: ${message.salons}`);
-    }
-
-    ws.close();
+function askServerAddress() {
+  rl.question('Adresse du serveur : ', addr => {
+    serverAddress = addr;
+    askUsername();
   });
 }
 
-rl.question('Entrez l\'adresse du serveur Websocket: ', (serverAddress) => {
-  rl.question('Entrez votre identifiant: ', (identifiant) => {
-    rl.question('Entrez votre mot de passe: ', (motDePasse) => {
-      console.log(`Identifiant: ${identifiant}, Mot de passe: ${'*'.repeat(motDePasse.length)}`);
-      
-      // Se connecter au serveur Websocket
-      connectToWebSocketServer(serverAddress, identifiant, motDePasse);
+function askUsername() {
+  rl.question('Identifiant : ', user => {
+    username = user;
+    askPassword();
+  });
+}
 
-      rl.close();
+function askPassword() {
+  process.stdout.write('Mot de passe : ');
+  process.stdout.write(hideCursor);
+
+  let passwordInput = '';
+  process.stdin.on('keypress', (ch, key) => {
+    if (key && key.name === 'return') {
+      process.stdout.write(showCursor);
+      process.stdin.removeAllListeners('keypress');
+      password = passwordInput;
+      connectToServer();
+    } else {
+      passwordInput += ch;
+      process.stdout.write('*');
+    }
+  });
+}
+
+function connectToServer() {
+  socket = io(serverAddress);
+
+  socket.on('connect', () => {
+    console.log('\nConnexion en cours...');
+    socket.emit('authentication', { username, password });
+
+    socket.on('authenticated', () => {
+      console.log('Connexion établie');
+      socket.on('salons', salons => {
+        console.log(`Salons disponibles : ${salons.join(', ')}`);
+        commandPrompt();
+      });
     });
 
-    // Configuration pour cacher les caractères entrés par l'utilisateur
-    rl._writeToOutput = function _writeToOutput(stringToWrite) {
-      if (rl.stdoutMuted)
-        rl.output.write("*");
-      else
-        rl.output.write(stringToWrite);
-    };
-    rl.stdoutMuted = true;
-    process.stdin.on('keypress', function (chunk, key) {
-      if (key && key.name === 'return') {
-        rl.stdoutMuted = false;
-      }
+    socket.on('unauthorized', () => {
+      console.log('Authentification échouée');
+      process.exit(1);
+    });
+
+    socket.on('message', msg => {
+      console.log(`\n${msg.user}: ${msg.text}`);
+      commandPrompt();
+    });
+
+    socket.on('private_message', msg => {
+      console.log(`\n[PRIVÉ] ${msg.user}: ${msg.text}`);
+      commandPrompt();
     });
   });
-});
+}
 
+function commandPrompt() {
+  rl.question('\n> ', command => {
+    const args = command.split(' ');
+    const cmd = args.shift();
+
+    switch (cmd) {
+      case 'join':
+        if (args.length !== 1) {
+          console.log('Usage : join <sallon>');
+        } else {
+          socket.emit('join', args[0]);
+        }
+        break;
+      case 'send':
+        if (args.length < 2) {
+          console.log('Usage : send <sallon> <message>');
+        } else {
+          socket.emit('message', { room: args[0], text: args.slice(1).join(' ') });
+        }
+        break;
+      case 'list_users':
+        if (args.length !== 1) {
+          console.log('Usage : list_users <sallon>');
+        } else {
+          socket.emit('list_users', args[0], users => {
+            console.log(`Utilisateurs dans ${args[0]} : ${users.join(', ')}`);
+          });
+        }
+        break;
+      case 'private':
+        if (args.length < 2) {
+          console.log('Usage : private <utilisateur> <message>');
+        } else {
+          socket.emit('private_message', { user: args[0], text: args.slice(1).join(' ') });
+          }
+          break;
+        default:
+          console.log('Commande inconnue');
+      }
+      commandPrompt();
+    });
+  }
+  
+  askServerAddress();
+  
