@@ -37,7 +37,7 @@ cd ..
 Pour démarrer le serveur de chat, exécutez la commande suivante dans le dossier du projet :
 
 ```bash
-node ./serveur/index.js
+node ./server/index.js
 ```
 
 Le serveur commencera à écouter les connexions sur un port disponible et diffusera sa présence sur le réseau local.
