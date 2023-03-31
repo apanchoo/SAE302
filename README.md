@@ -16,7 +16,7 @@ Une application de chat simple et légère développée en utilisant Node.js, of
 
 ```bash
 git clone https://github.com/yourusername/nodejs-chat-application.git
-```bash
+```
 
 
 2. Accédez au dossier du projet et installez les dépendances :
