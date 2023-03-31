@@ -1,5 +1,39 @@
 const net = require("net");
 const port = 5000;
+const dgram = require("dgram");
+const sqlite3 = require("sqlite3").verbose();
+const db = new sqlite3.Database("chat.db", (err) => {
+  if (err) {
+    console.error("Erreur lors de l'ouverture de la base de données:", err);
+    process.exit(1);
+  }
+});
+
+
+
+// Initialisez la base de données
+db.serialize(() => {
+  db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)");
+});
+
+const udpServer = dgram.createSocket("udp4");
+
+// Utilisez un port différent de celui du serveur TCP
+const udpPort = 3001;
+
+// Diffusez la présence du serveur toutes les 10 secondes
+setInterval(() => {
+  // Incluez le port TCP (server.address().port) dans le message
+  const message = Buffer.from(`chat_server_announcement:${server.address().port}`);
+  udpServer.send(message, 0, message.length, 3004, "255.255.255.255");
+}, 10000);
+
+// Autorisez la diffusion (broadcast)
+udpServer.bind(udpPort, () => {
+  udpServer.setBroadcast(true);
+});
+
+
 
 let clients = [];
 let chatRooms = new Map();
@@ -44,12 +78,24 @@ function handleMessage(socket, message) {
     case "/list":
       listRooms(socket);
       break;
+
+    case "/register":
+      registerUser(socket, args[0], args[1]);
+      break;
+    case "/login":
+      loginUser(socket, args[0], args[1]);
+      break;
     default:
       broadcast(socket, message);
   }
 }
 
 function joinRoom(socket, room) {
+  if (!socket.isAuthenticated) {
+    socket.write("Veuillez vous connecter pour rejoindre un salon.\n");
+    return;
+  }
+
   if (!room) {
     socket.write("Veuillez spécifier un nom de salon.\n");
     return;
@@ -90,6 +136,11 @@ function privateMessage(socket, target, message) {
 }
 
 function broadcast(socket, message) {
+  if (!socket.isAuthenticated) {
+    socket.write("Veuillez vous connecter pour envoyer des messages.\n");
+    return;
+  }
+
   if (!socket.currentRoom) {
     socket.write("Veuillez rejoindre un salon pour envoyer des messages.\n");
     return;
@@ -126,7 +177,43 @@ function setNickname(socket, nickname) {
   socket.write(`Votre pseudo est maintenant ${nickname}\n`);
 }
 
+function registerUser(socket, username, password) {
+  if (!username || !password) {
+    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous inscrire.\n");
+    return;
+  }
+
+  db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, password], (err) => {
+    if (err) {
+      socket.write("Erreur lors de l'inscription : l'utilisateur existe déjà.\n");
+      return;
+    }
+
+    socket.write("Inscription réussie! Vous pouvez maintenant vous connecter.\n");
+  });
+}
+
+function loginUser(socket, username, password) {
+  if (!username || !password) {
+    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous connecter.\n");
+    return;
+  }
+
+  db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
+    if (err || !row || row.password !== password) {
+      socket.write("Nom d'utilisateur ou mot de passe incorrect.\n");
+      return;
+    }
+
+    socket.nickname = username;
+    socket.write(`Vous êtes maintenant connecté en tant que ${username}\n`);
+  });
+  socket.isAuthenticated = true;
+}
+
+
 
 server.listen(port, () => {
   console.log(`Serveur de chat en écoute sur le port ${port}`);
 });
+
