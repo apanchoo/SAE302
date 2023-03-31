@@ -23,7 +23,11 @@ git clone https://github.com/apanchoo/nodejs-chat-application.git
 
 ```bash
 cd nodejs-chat-application
+cd client
 npm install
+cd ../server
+npm install
+cd ..
 ```
 
 ## Utilisation
@@ -33,7 +37,7 @@ npm install
 Pour démarrer le serveur de chat, exécutez la commande suivante dans le dossier du projet :
 
 ```bash
-node server.js
+node ./serveur/index.js
 ```
 
 Le serveur commencera à écouter les connexions sur un port disponible et diffusera sa présence sur le réseau local.
@@ -43,7 +47,7 @@ Le serveur commencera à écouter les connexions sur un port disponible et diffu
 Pour démarrer le client de chat, exécutez la commande suivante dans un autre terminal (toujours dans le dossier du projet) :
 
 ```bash
-node client.js
+node ./client/client.js
 ```
 
 
@@ -52,7 +56,7 @@ Le client recherchera les serveurs disponibles sur le réseau local et vous perm
 ## Fonctionnalités
 
 - Salons de discussion : les utilisateurs peuvent rejoindre des salons de discussion publics pour discuter avec d'autres utilisateurs.
-- Messages privés : les utilisateurs peuvent envoyer des messages privés à d'autres utilisateurs en utilisant la commande `/private`.
+- Messages privés : les utilisateurs peuvent envoyer des messages privés à d'autres utilisateurs en utilisant la commande `/msg`.
 - Authentification des utilisateurs : les utilisateurs doivent s'inscrire et se connecter pour accéder aux fonctionnalités de chat.
 - Découverte automatique des serveurs : les clients peuvent découvrir les serveurs de chat disponibles sur le réseau local en utilisant le protocole UDP et la diffusion (broadcast).
 
