@@ -15,7 +15,7 @@ Une application de chat simple et légère développée en utilisant Node.js, of
 1. Clonez ce dépôt :
 
 ```bash
-git clone https://github.com/yourusername/nodejs-chat-application.git
+git clone https://github.com/apanchoo/nodejs-chat-application.git
 ```
 
 
