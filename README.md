@@ -22,7 +22,7 @@ git clone https://github.com/apanchoo/nodejs-chat-application.git
 2. Accédez au dossier du projet et installez les dépendances :
 
 ```bash
-cd nodejs-chat-application
+cd SAE302
 cd client
 npm install
 cd ../server
