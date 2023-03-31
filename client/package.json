@@ -9,6 +9,9 @@
   "author": "Ashvin",
   "license": "ISC",
   "dependencies": {
-    "readline": "^1.3.0"
+    "net": "^1.0.2",
+    "readline": "^1.3.0",
+    "socket.io": "^4.6.1",
+    "socket.io-client": "^4.6.1"
   }
 }
