@@ -3,13 +3,14 @@ const bcrypt = require("bcrypt");
 const port = 5000;
 const dgram = require("dgram");
 const sqlite3 = require("sqlite3").verbose();
+const CryptoJS = require("crypto-js");
 const db = new sqlite3.Database("chat.db", (err) => {
   if (err) {
     console.error("Erreur lors de l'ouverture de la base de données:", err);
     process.exit(1);
   }
 });
-
+const secretKey = "your-secret-key";
 
 
 // Initialisez la base de données
@@ -45,7 +46,8 @@ const server = net.createServer((socket) => {
   console.log(`Nouveau client connecté: ${socket.remoteAddress}:${socket.remotePort}`);
 
   socket.on("data", (data) => {
-    let message = data.toString().trim();
+    let encryptedMessage = data.toString().trim();
+    let message = decryptMessage(encryptedMessage);
     handleMessage(socket, message);
   });
 
@@ -58,6 +60,17 @@ const server = net.createServer((socket) => {
     console.log(`Erreur: ${err}`);
   });
 });
+
+function encryptMessage(message) {
+  const cipherText = CryptoJS.AES.encrypt(message, secretKey).toString();
+  return cipherText;
+}
+
+function decryptMessage(cipherText) {
+  const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
+  const originalMessage = bytes.toString(CryptoJS.enc.Utf8);
+  return originalMessage;
+}
 
 function handleMessage(socket, message) {
   const [command, ...args] = message.split(" ");
@@ -94,12 +107,12 @@ function handleMessage(socket, message) {
 
 function joinRoom(socket, room) {
   if (!socket.isAuthenticated) {
-    socket.write("Veuillez vous connecter pour rejoindre un salon.\n");
+    socket.write(encryptMessage("Veuillez vous connecter pour rejoindre un salon.\n"));
     return;
   }
 
   if (!room) {
-    socket.write("Veuillez spécifier un nom de salon.\n");
+    socket.write(encryptMessage("Veuillez spécifier un nom de salon.\n"));
     return;
   }
 
@@ -111,7 +124,7 @@ function joinRoom(socket, room) {
 
   chatRooms.get(room).push(socket);
   socket.currentRoom = room;
-  socket.write(`Vous avez rejoint le salon ${room}\n`);
+  socket.write(encryptMessage(`Vous avez rejoint le salon ${room}\n`));
   db.all("SELECT * FROM messages WHERE room = ? ORDER BY timestamp DESC LIMIT 10", [room], (err, rows) => {
     if (err) {
       console.error("Erreur lors de la récupération des messages :", err);
@@ -119,9 +132,9 @@ function joinRoom(socket, room) {
     }
 
     // Affichez les 10 derniers messages à l'utilisateur qui vient de rejoindre le salon
-    socket.write("10 derniers messages du salon :\n");
+    socket.write(encryptMessage("10 derniers messages du salon :\n"));
     rows.reverse().forEach((row) => {
-      socket.write(`${row.username}: ${row.message}\n`);
+      socket.write(encryptMessage(`${row.username}: ${row.message}\n`));
     });
   });
 }
@@ -137,34 +150,34 @@ function privateMessage(socket, target, message) {
   const targetSocket = clients.find((client) => client.nickname === target);
 
   if (!targetSocket) {
-    socket.write("Utilisateur introuvable.\n");
+    socket.write(encryptMessage("Utilisateur introuvable.\n"));
     return;
   }
 
   if (!message) {
-    socket.write("Veuillez entrer un message.\n");
+    socket.write(encryptMessage("Veuillez entrer un message.\n"));
     return;
   }
 
-  targetSocket.write(`${socket.nickname} (privé): ${message}\n`);
+  targetSocket.write(encryptMessage(`\n${socket.nickname} (privé): ${message}\n`));
 }
 
 function broadcast(socket, message) {
   if (!socket.isAuthenticated) {
-    socket.write("Veuillez vous connecter pour envoyer des messages.\n");
+    socket.write(encryptMessage("Veuillez vous connecter pour envoyer des messages.\n"));
     return;
   }
 
   if (!socket.currentRoom) {
-    socket.write("Veuillez rejoindre un salon pour envoyer des messages.\n");
+    socket.write(encryptMessage("Veuillez rejoindre un salon pour envoyer des messages.\n"));
     return;
   }
 
   chatRooms.get(socket.currentRoom).forEach((client) => {
     if (client === socket) {
-      client.write(`Vous: ${message}\n`);
+      client.write(encryptMessage(`Vous: ${message}\n`));
     } else {
-      client.write(`${socket.nickname}: ${message}\n`);
+      client.write(encryptMessage(`\n${socket.nickname}: ${message}\n`));
     }
   });
   // Enregistrez le message dans la base de données
@@ -174,46 +187,46 @@ function broadcast(socket, message) {
 
 function listRooms(socket) {
   const rooms = Array.from(chatRooms.keys()).join(", ");
-  socket.write(`Salons disponibles: ${rooms}\n`);
+  socket.write(encryptMessage(`Salons disponibles: ${rooms}\n`));
 }
 
 
 function setNickname(socket, nickname) {
   if (!nickname) {
-    socket.write("Veuillez spécifier un pseudo.\n");
+    socket.write(encryptMessage("Veuillez spécifier un pseudo.\n"));
     return;
   }
 
   if (clients.some((client) => client.nickname === nickname)) {
-    socket.write("Ce pseudo est déjà utilisé. Veuillez en choisir un autre.\n");
+    socket.write(encryptMessage("Ce pseudo est déjà utilisé. Veuillez en choisir un autre.\n"));
     return;
   }
 
   socket.nickname = nickname;
-  socket.write(`Votre pseudo est maintenant ${nickname}\n`);
+  socket.write(encryptMessage(`Votre pseudo est maintenant ${nickname}\n`));
 }
 
 function loginUser(socket, username, password) {
   if (!username || !password) {
-    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous connecter.\n");
+    socket.write(encryptMessage("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous connecter.\n"));
     return;
   }
 
   db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
     if (err || !row) {
-      socket.write("Nom d'utilisateur ou mot de passe incorrect.\n");
+      socket.write(encryptMessage("Nom d'utilisateur ou mot de passe incorrect.\n"));
       return;
     }
 
     bcrypt.compare(password, row.password, (err, result) => {
       if (err || !result) {
-        socket.write("Nom d'utilisateur ou mot de passe incorrect.\n");
+        socket.write(encryptMessage("Nom d'utilisateur ou mot de passe incorrect.\n"));
         return;
       }
 
       socket.nickname = username;
       socket.isAuthenticated = true;
-      socket.write(`Vous êtes maintenant connecté en tant que ${username}\n`);
+      socket.write(encryptMessage(`Vous êtes maintenant connecté en tant que ${username}\n`));
     });
   });
 }
@@ -221,23 +234,23 @@ function loginUser(socket, username, password) {
 
 function registerUser(socket, username, password) {
   if (!username || !password) {
-    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous inscrire.\n");
+    socket.write(encryptMessage("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous inscrire.\n"));
     return;
   }
 
   bcrypt.hash(password, 10, (err, hashedPassword) => {
     if (err) {
-      socket.write("Erreur lors du hachage du mot de passe.\n");
+      socket.write(encryptMessage("Erreur lors du hachage du mot de passe.\n"));
       return;
     }
 
     db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], (err) => {
       if (err) {
-        socket.write("Erreur lors de l'inscription : l'utilisateur existe déjà.\n");
+        socket.write(encryptMessage("Erreur lors de l'inscription : l'utilisateur existe déjà.\n"));
         return;
       }
 
-      socket.write("Inscription réussie! Vous pouvez maintenant vous connecter.\n");
+      socket.write(encryptMessage("Inscription réussie! Vous pouvez maintenant vous connecter.\n"));
     });
   });
 }
