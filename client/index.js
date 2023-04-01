@@ -1,4 +1,5 @@
 const net = require("net");
+const bcrypt = require("bcrypt");
 const port = 5000;
 const dgram = require("dgram");
 const sqlite3 = require("sqlite3").verbose();
@@ -177,22 +178,6 @@ function setNickname(socket, nickname) {
   socket.write(`Votre pseudo est maintenant ${nickname}\n`);
 }
 
-function registerUser(socket, username, password) {
-  if (!username || !password) {
-    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous inscrire.\n");
-    return;
-  }
-
-  db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, password], (err) => {
-    if (err) {
-      socket.write("Erreur lors de l'inscription : l'utilisateur existe déjà.\n");
-      return;
-    }
-
-    socket.write("Inscription réussie! Vous pouvez maintenant vous connecter.\n");
-  });
-}
-
 function loginUser(socket, username, password) {
   if (!username || !password) {
     socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous connecter.\n");
@@ -200,15 +185,46 @@ function loginUser(socket, username, password) {
   }
 
   db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
-    if (err || !row || row.password !== password) {
+    if (err || !row) {
       socket.write("Nom d'utilisateur ou mot de passe incorrect.\n");
       return;
     }
 
-    socket.nickname = username;
-    socket.write(`Vous êtes maintenant connecté en tant que ${username}\n`);
+    bcrypt.compare(password, row.password, (err, result) => {
+      if (err || !result) {
+        socket.write("Nom d'utilisateur ou mot de passe incorrect.\n");
+        return;
+      }
+
+      socket.nickname = username;
+      socket.isAuthenticated = true;
+      socket.write(`Vous êtes maintenant connecté en tant que ${username}\n`);
+    });
   });
-  socket.isAuthenticated = true;
+}
+
+
+function registerUser(socket, username, password) {
+  if (!username || !password) {
+    socket.write("Veuillez fournir un nom d'utilisateur et un mot de passe pour vous inscrire.\n");
+    return;
+  }
+
+  bcrypt.hash(password, 10, (err, hashedPassword) => {
+    if (err) {
+      socket.write("Erreur lors du hachage du mot de passe.\n");
+      return;
+    }
+
+    db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], (err) => {
+      if (err) {
+        socket.write("Erreur lors de l'inscription : l'utilisateur existe déjà.\n");
+        return;
+      }
+
+      socket.write("Inscription réussie! Vous pouvez maintenant vous connecter.\n");
+    });
+  });
 }
 
 
