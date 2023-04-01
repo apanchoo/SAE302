@@ -15,6 +15,7 @@ const db = new sqlite3.Database("chat.db", (err) => {
 // Initialisez la base de données
 db.serialize(() => {
   db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)");
+  db.run("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, room TEXT, username TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)");
 });
 
 const udpServer = dgram.createSocket("udp4");
@@ -111,6 +112,18 @@ function joinRoom(socket, room) {
   chatRooms.get(room).push(socket);
   socket.currentRoom = room;
   socket.write(`Vous avez rejoint le salon ${room}\n`);
+  db.all("SELECT * FROM messages WHERE room = ? ORDER BY timestamp DESC LIMIT 10", [room], (err, rows) => {
+    if (err) {
+      console.error("Erreur lors de la récupération des messages :", err);
+      return;
+    }
+
+    // Affichez les 10 derniers messages à l'utilisateur qui vient de rejoindre le salon
+    socket.write("10 derniers messages du salon :\n");
+    rows.reverse().forEach((row) => {
+      socket.write(`${row.username}: ${row.message}\n`);
+    });
+  });
 }
 
 function leaveRoom(socket) {
@@ -154,6 +167,8 @@ function broadcast(socket, message) {
       client.write(`${socket.nickname}: ${message}\n`);
     }
   });
+  // Enregistrez le message dans la base de données
+  db.run("INSERT INTO messages (room, username, message) VALUES (?, ?, ?)", [socket.currentRoom, socket.nickname, message]);
 }
 
 
