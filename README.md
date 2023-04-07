@@ -58,7 +58,7 @@ Le client recherchera les serveurs disponibles sur le réseau local et vous perm
 - Salons de discussion : les utilisateurs peuvent rejoindre des salons de discussion publics pour discuter avec d'autres utilisateurs à l'aide de la commande `/join`.
 - Messages privés : les utilisateurs peuvent envoyer des messages privés à d'autres utilisateurs en utilisant la commande `/msg`.
 - Authentification des utilisateurs : les utilisateurs doivent s'inscrire et se connecter pour accéder aux fonctionnalités de chat à l'aide des commandes `/login` et `/register`. Les mot de passe ainsi que les utilisateurs sont stockés dans le fichier chat.db et sont haché.
-- Il est possible d'afficher la liste des salons existat à l'aide de la commande `/list` de même que la liste des utilisateurs connectés ainsi que les saloons qu'ils ont rejoint à l'aide de la commande `/users`
+- Il est possible d'afficher la liste des salons existat à l'aide de la commande `/list` de même que la liste des utilisateurs connectés ainsi que les salons qu'ils ont rejoint à l'aide de la commande `/users`
 - Découverte automatique des serveurs : les clients peuvent découvrir les serveurs de chat disponibles sur le réseau local en utilisant le protocole UDP et la diffusion (broadcast).
 
 ## Licence
