@@ -11,6 +11,12 @@ const foundServers = [];
 
 
 udpClient.on("listening", () => {
+  console.log(" _____ _____ _     _____ ________  ___")
+  console.log("|_   _|  ___| |   /  __ \  _  |  \/  |")
+  console.log("  | | | |__ | |   | /  \/ | | | .  . | )")
+  console.log("  | | |  __|| |   | |   | | | | |\/| | ");
+  console.log("  | | | |___| |___| \__/\ \_/ / |  | | ");
+  console.log("  \_/ \____/\_____/\____/\___/\_|  |_/ ")
   console.log("Recherche de serveurs de chat...");
   setTimeout(() => {
   udpClient.close();

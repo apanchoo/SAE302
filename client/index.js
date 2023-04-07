@@ -100,6 +100,10 @@ function handleMessage(socket, message) {
     case "/login":
       loginUser(socket, args[0], args[1]);
       break;
+    case "/users":
+      listUsers(socket);
+      break;
+
     default:
       broadcast(socket, message);
   }
@@ -143,6 +147,28 @@ function leaveRoom(socket) {
   if (socket.currentRoom) {
     chatRooms.get(socket.currentRoom).splice(chatRooms.get(socket.currentRoom).indexOf(socket), 1);
     socket.currentRoom = null;
+  }
+}
+
+function listUsers(socket) {
+  let userList = [];
+
+  chatRooms.forEach((usersInRoom, room) => {
+    usersInRoom.forEach((user) => {
+      userList.push({
+        nickname: user.nickname,
+        room: room,
+      });
+    });
+  });
+
+  if (userList.length === 0) {
+    socket.write(encryptMessage("Aucun utilisateur connecté actuellement.\n"));
+  } else {
+    socket.write(encryptMessage("Liste des utilisateurs connectés :\n"));
+    userList.forEach((user) => {
+      socket.write(encryptMessage(`${user.nickname} (salle : ${user.room})\n`));
+    });
   }
 }
 
