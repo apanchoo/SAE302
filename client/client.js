@@ -4,12 +4,19 @@ const port = 5000;
 const host = "127.0.0.1";
 const dgram = require("dgram");
 const udpClient = dgram.createSocket("udp4");
+const CryptoJS = require("crypto-js");
 const udpPort = 3004;
-
+const secretKey = "your-secret-key";
 const foundServers = [];
 
 
 udpClient.on("listening", () => {
+  console.log(" _____ _____ _     _____ ________  ___")
+  console.log("|_   _|  ___| |   /  __ \  _  |  \/  |")
+  console.log("  | | | |__ | |   | /  \/ | | | .  . | )")
+  console.log("  | | |  __|| |   | |   | | | | |\/| | ");
+  console.log("  | | | |___| |___| \__/\ \_/ / |  | | ");
+  console.log("  \_/ \____/\_____/\____/\___/\_|  |_/ ")
   console.log("Recherche de serveurs de chat...");
   setTimeout(() => {
   udpClient.close();
@@ -37,6 +44,16 @@ udpClient.bind(udpPort);
 
 function displayPrompt() {
   process.stdout.write("> ");
+}
+function encryptMessage(message) {
+  const cipherText = CryptoJS.AES.encrypt(message, secretKey).toString();
+  return cipherText;
+}
+
+function decryptMessage(cipherText) {
+  const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
+  const originalMessage = bytes.toString(CryptoJS.enc.Utf8);
+  return originalMessage;
 }
 
 const rl = readline.createInterface({
@@ -74,13 +91,15 @@ function showServerListAndConnect() {
       
       
           rl.addListener("line", (line) => {
-            client.write(line);
+            const encryptedMessage = encryptMessage(line);
+            client.write(encryptedMessage);
           });
         });
       
       
       client.on("data", (data) => {
-        console.log(data.toString().trim());
+        const decryptedMessage = decryptMessage(data.toString().trim());
+        console.log(decryptedMessage);
         displayPrompt();
       });
       client.on("end", () => {
